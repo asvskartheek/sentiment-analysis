@@ -13,3 +13,13 @@ With this, you can
 ### 1. Simple RNN Classifier
 ### 2. Bi-Directinal LSTM Classifier
 ### 3. Fast Classifier
+
+## How to train pre-trained models
+This will give a list of all the hyperparameters you can tweak to check and have fun.
+```
+python train.py --help
+```
+### DEFAULTS
+**Architecture:** Average Pooling over embeddings and a linear classifier over it. This model was introduced by the paper [Bag of Tricks for Efficient Text Classification](https://arxiv.org/abs/1607.01759). Our implementation is almost verbatim from [bentrevett](https://github.com/bentrevett/pytorch-sentiment-analysis)
+**Optimizer:** Adam with 1e-3 learning rate.
+**DEVICE**: The code by default assumes that you are using CPU. To ue a GPU, you have to run with the flag --n_gpus=1, if you are using a GPU we suggest to use a batch size of 64.
