@@ -1,0 +1,6 @@
+/lightning_logs/
+/pretrained/
+/venv/
+/.vector_cache/
+/.data/
+/.idea/

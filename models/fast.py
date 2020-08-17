@@ -2,19 +2,18 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from bare import Bare
+from models.bare import Bare
 
 
 class FastClassifier(Bare):
     def __init__(self, hparams, *args, **kwargs):
-        super().__init__(hparams)
-        self.hparams = hparams
+        super().__init__(hparams, *args, **kwargs)
 
-        self.embedding = nn.Embedding(hparams['vocab_size'], hparams['embedding_dim'],
-                                      padding_idx=hparams['padding_idx'])
+        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
+                                      padding_idx=self.hparams.padding_idx)
 
-        self.fc = nn.Linear(hparams['embedding_dim'], hparams['output_dim'])
-        self.dropout = nn.Dropout(hparams['dropout_rate'])
+        self.fc = nn.Linear(self.hparams.embed_dim, 1)
+        self.dropout = nn.Dropout(self.hparams.dropout_rate)
 
     def forward(self, example):
         text, text_lens = example
@@ -37,4 +36,4 @@ class FastClassifier(Bare):
 
         if zero_words is not None:
             for word in zero_words:
-                self.embedding.weight.data[word] = torch.zeros(self.hparams['embedding_dim'])
+                self.embedding.weight.data[word] = torch.zeros(self.hparams.embed_dim)

@@ -10,7 +10,7 @@ class Bare(pl.LightningModule):
     The bare bone lightning model, any sub-class forward should return output: [b * o]
     """
 
-    def __init__(self, hparams: dict, *args, **kwargs):
+    def __init__(self, hparams, *args, **kwargs):
         super().__init__()
 
         self.hparams = hparams
@@ -19,11 +19,12 @@ class Bare(pl.LightningModule):
         return torch.Tensor()  # dummy
 
     def configure_optimizers(self):
-        learning_rate = self.hparams.get('learning_rate', 1e-3)
-        optim_name = self.hparams.get('optimizer', 'adam')
-        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        learning_rate = self.hparams.lr
+        optim_name = self.hparams.optimizer
 
-        if optim_name == 'sgd':
+        if optim_name=='adam':
+            optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        elif optim_name == 'sgd':
             optimizer = optim.SGD(self.parameters(), lr=learning_rate)
 
         return optimizer
@@ -74,12 +75,3 @@ class Bare(pl.LightningModule):
         batch.text = (text, text_lens)
         batch.label = batch.label.to(device)
         return batch
-
-    # def train_dataloader(self, train_loader):
-    #     return self.hparams['train_loader']
-    #
-    # def val_dataloader(self, val_loader):
-    #     return self.hparams['val_loader']
-    #
-    # def test_dataloader(self, test_loader):
-    #     return self.hparams['test_loader']

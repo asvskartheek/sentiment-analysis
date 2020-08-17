@@ -3,25 +3,20 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from rnn import SimpleRNNClassifier
+from models.bare import Bare
 
 
-class BiLSTMClassifier(SimpleRNNClassifier):
+class BiLSTMClassifier(Bare):
 
-    def __init__(self, vocab_size, embed_dim, num_layers, hidden_dim, output_dim,
-                 padding_idx, dropout_rate):
-        super().__init__(vocab_size, embed_dim, hidden_dim, output_dim, padding_idx, dropout_rate)
+    def __init__(self, hparams, *args, **kwargs):
+        super().__init__(hparams, *args, **kwargs)
 
-        self.n_layers = num_layers
-        self.vocab_size = vocab_size
-        self.embed_dim = embed_dim
-        self.hidden_dim = hidden_dim
-        self.output_dim = output_dim
-
-        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
-        self.dropout = nn.Dropout(dropout_rate)
-        self.rnn = nn.LSTM(embed_dim, hidden_dim, num_layers=self.n_layers, bidirectional=True)
-        self.fc = nn.Linear(2*hidden_dim, output_dim)
+        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
+                                      padding_idx=self.hparams.padding_idx)
+        self.dropout = nn.Dropout(self.hparams.dropout_rate)
+        self.rnn = nn.LSTM(self.hparams.embed_dim, self.hparams.hidden_dim,
+                           num_layers=self.hparams.num_layers, bidirectional=True)
+        self.fc = nn.Linear(2 * self.hparams.hidden_dim, 1)
 
     def forward(self, example) -> torch.Tensor:
         text, text_lens = example
@@ -38,7 +33,7 @@ class BiLSTMClassifier(SimpleRNNClassifier):
         rnn_output, rnn_output_lens = pad_packed_sequence(
             packed_output)
         # rnn_output: [max_len * b * (2*h)]
-        hidden = hidden.view(self.n_layers, 2, -1, self.hidden_dim)
+        hidden = hidden.view(self.hparams.num_layers, 2, -1, self.hparams.hidden_dim)
         # hidden: [num_layers * 2 * b * h]
         hidden = hidden[-1]
         # hidden: [2 * b * h]

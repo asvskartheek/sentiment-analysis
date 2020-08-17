@@ -22,3 +22,9 @@ def generate_bigrams(x):
     for n_gram in n_grams:
         x.append(' '.join(n_gram))
     return x
+
+def save_vocab(vocab, path):
+    import pickle
+    output = open(path, 'wb')
+    pickle.dump(vocab, output)
+    output.close()

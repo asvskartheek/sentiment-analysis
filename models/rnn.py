@@ -3,18 +3,19 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from bare import Bare
+from models.bare import Bare
 
 
 class SimpleRNNClassifier(Bare):
 
-    def __init__(self, hparams: dict):
-        super().__init__(hparams)
+    def __init__(self, hparams, *args, **kwargs):
+        super().__init__(hparams, *args, **kwargs)
 
-        self.embedding = nn.Embedding(hparams['vocab_size'], hparams['embed_dim'], padding_idx=hparams['padding_idx'])
-        self.dropout = nn.Dropout(hparams['dropout_rate'])
-        self.rnn = nn.RNN(hparams['embed_dim'], hparams['hidden_dim'])
-        self.fc = nn.Linear(hparams['hidden_dim'], hparams['output_dim'])
+        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
+                                      padding_idx=self.hparams.padding_idx)
+        self.dropout = nn.Dropout(self.hparams.dropout_rate)
+        self.rnn = nn.RNN(self.hparams.embed_dim, self.hparams.hidden_dim)
+        self.fc = nn.Linear(self.hparams.hidden_dim, 1)
 
     def forward(self, example) -> torch.Tensor:
         text, text_lens = example
