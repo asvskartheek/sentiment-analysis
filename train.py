@@ -1,41 +1,46 @@
 import argparse
 import random
+from pathlib import Path
 
 import torch
 from torchtext import data, datasets
 
 import pytorch_lightning as pl
 
-from models import SimpleRNNClassifier, FastClassifier, BiLSTMClassifier
+from models import *
 
 from utils import generate_bigrams, count_parameters, save_vocab
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
-parser.add_argument('--batch_size', default=8, type=int, help='batch size')
-parser.add_argument('--epochs', type=int, default=300, help='number of epochs to train for')
-parser.add_argument('--n_gpus', type=int, default=0, help='number of GPUs')
-parser.add_argument('--optimizer', type=str, default='adam', help='optimizer to be used')
-parser.add_argument('--valid', type=float, default=0.2, help='fraction of data to validation')
+parser.add_argument('--lr', default=1e-3, type=float, help='learning rate, default: 1e-3')
+parser.add_argument('--batch_size', default=8, type=int, help='batch size, default: 8')
+parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train for, default: 100')
+parser.add_argument('--n_gpus', type=int, default=0, help='number of GPUs, default: 0')
+parser.add_argument('--optimizer', type=str, default='adam', help='optimizer to be used, default: adam')
+parser.add_argument('--valid', type=float, default=0.2, help='fraction of data to validation, default: 0.2')
 
-parser.add_argument('--vocab_size', type=int, default=25_000, help='vocabulary size of text field')
+parser.add_argument('--vocab_size', type=int, default=25_000, help='vocabulary size of text field, default: 25,000')
 parser.add_argument('--pretrained', type=str, default='glove.6B.100d', help='pretrained vectors to be used for '
-                                                                            'Embedding layer')
-parser.add_argument('--dropout_rate', type=float, default=0.5, help='dropout rate to avoid overfitting.')
-parser.add_argument('--embed_dim', type=int, default=100, help='dimensions of embedding layer')
-parser.add_argument('--hidden_dim', type=int, default=256, help='number of hidden dim for RNN layers')
-parser.add_argument('--num_layers', type=int, default=1, help='number of RNN layers')
+                                                                            'Embedding layer, default: \"glove.6B.100d\"')
+parser.add_argument('--dropout_rate', type=float, default=0.5, help='dropout rate to avoid overfitting, default: 0.5')
+parser.add_argument('--embed_dim', type=int, default=100, help='dimensions of embedding layer, default: 100')
+parser.add_argument('--hidden_dim', type=int, default=256, help='number of hidden dim for RNN layers, default: 256')
+parser.add_argument('--num_layers', type=int, default=1, help='number of RNN layers, default: 1')
 parser.add_argument('--model', type=str, default='fast', help='model architecture to be used for training, '
-                                                              'simple|fast|birnn')
-parser.add_argument('--debug', type=bool, default=False, help='run the model in fast_dev_run mode')
-parser.add_argument('--overfit_test', type=int, default=0, help='number of batches on which overfit test to be ran')
-parser.add_argument('--seed', type=int, default=69, help='seed value for reproducable results')
+                                                              'simple|fast|birnn|cnn, default: fast')
+parser.add_argument('--conv_out_channels', type=int, default=100, help='Conv layer out channels, default: 100')
+parser.add_argument('--filter_size', type=int, default=2, help='Default is bigram, set to n-gram')
+parser.add_argument('--debug', type=bool, default=False, help='run the model in fast_dev_run mode, default: False')
+parser.add_argument('--overfit_test', type=int, default=0, help='number of batches on which overfit test to be ran, default: 0')
+parser.add_argument('--seed', type=int, default=69, help='seed value for reproducable results, default: 69')
+
+## Add further hyper-parameters here.
 
 hparams = parser.parse_args()
 
 if __name__ == '__main__':
     torch.manual_seed(hparams.seed)
-    torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.deterministic = True
     TEXT = data.Field(tokenize='spacy', include_lengths=True)
     LABEL = data.LabelField(dtype=torch.float, is_target=True, unk_token=None)
 
@@ -71,8 +76,10 @@ if __name__ == '__main__':
         model = BiLSTMClassifier(hparams)
     elif hparams.model == 'fast':
         model = FastClassifier(hparams)
+    elif hparams.model == 'cnn':
+        model = CNNClassifier(hparams)
     else:
-        raise ValueError("The model doesn't exist select among simple | fast | birnn")
+        raise ValueError("The model doesn't exist select among simple | fast | birnn | cnn")
     hparams.parameters = count_parameters(model)
     print(f'The model has {hparams.parameters:,} trainable parameters')
 
@@ -86,9 +93,15 @@ if __name__ == '__main__':
     print('Training...')
     trainer.fit(model, train_dataloader=train_iterator, val_dataloaders=valid_iterator)
 
-    print('Saving Vocab...')
-    save_vocab(TEXT.vocab, 'pre_trained/fast/text.pkl')
-    save_vocab(LABEL.vocab, 'pre_trained/fast/label.pkl')
+    if hparams.debug or hparams.overfit_test>0:
+        print('Debug session complete')
+    else:
+        print('Saving Vocab...')
+        folder = "./pretrained/" + hparams.model
+        Path(folder).mkdir(parents=True, exist_ok=True)
 
-    print('Testing...')
-    trainer.test(test_dataloaders=test_iterator)
+        save_vocab(TEXT.vocab, folder+'/text.pkl')
+        save_vocab(LABEL.vocab, folder+'/label.pkl')
+
+        print('Testing...')
+        trainer.test(test_dataloaders=test_iterator)

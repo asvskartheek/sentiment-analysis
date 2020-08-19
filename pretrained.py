@@ -43,8 +43,10 @@ if __name__ == '__main__':
         model = BiLSTMClassifier.load_from_checkpoint(ckpt, map_location=torch.device('cpu'))
     elif model_arch == 'fast':
         model = FastClassifier.load_from_checkpoint(ckpt, map_location=torch.device('cpu'))
+    elif model_arch == 'cnn':
+        model = CNNClassifier.load_from_checkpoint(ckpt, map_location=torch.device('cpu'))
     else:
-        raise ValueError("The model doesn't exist, use | simple | birnn | fast |")
+        raise ValueError("The model doesn't exist, use | simple | birnn | fast | cnn |")
         exit(1)
 
     print('Parameters')
