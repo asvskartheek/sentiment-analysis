@@ -9,8 +9,11 @@ class FastClassifier(Bare):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(hparams, *args, **kwargs)
 
-        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
-                                      padding_idx=self.hparams.padding_idx)
+        self.embedding = nn.Embedding(
+            self.hparams.vocab_size,
+            self.hparams.embed_dim,
+            padding_idx=self.hparams.padding_idx,
+        )
 
         self.fc = nn.Linear(self.hparams.embed_dim, 1)
         self.dropout = nn.Dropout(self.hparams.dropout_rate)
@@ -24,7 +27,9 @@ class FastClassifier(Bare):
         # dropped_embedded: [max_len * b * e]
         dropped_embedded = dropped_embedded.permute(1, 0, 2)
         # dropped_embedded: [b * max_len * e]
-        pooled = F.avg_pool2d(dropped_embedded, (dropped_embedded.shape[1], 1)).squeeze(1)
+        pooled = F.avg_pool2d(dropped_embedded, (dropped_embedded.shape[1], 1)).squeeze(
+            1
+        )
         # pooled: [b * e]
         output = self.fc(pooled)
         # output: [b * o]

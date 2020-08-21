@@ -4,15 +4,21 @@ from torch.nn import functional as F
 
 from models.bare import Bare
 
-class CNNClassifier(Bare):
 
+class CNNClassifier(Bare):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(hparams, *args, **kwargs)
 
-        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
-                                      padding_idx=self.hparams.padding_idx)
-        self.conv_0 = nn.Conv2d(in_channels=1, out_channels=self.hparams.conv_out_channels,
-                                kernel_size=(self.hparams.filter_size, self.hparams.embed_dim))
+        self.embedding = nn.Embedding(
+            self.hparams.vocab_size,
+            self.hparams.embed_dim,
+            padding_idx=self.hparams.padding_idx,
+        )
+        self.conv_0 = nn.Conv2d(
+            in_channels=1,
+            out_channels=self.hparams.conv_out_channels,
+            kernel_size=(self.hparams.filter_size, self.hparams.embed_dim),
+        )
         self.dropout = nn.Dropout(self.hparams.dropout_rate)
         self.fc = nn.Linear(self.hparams.conv_out_channels, 1)
 

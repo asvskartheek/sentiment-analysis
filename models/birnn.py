@@ -7,15 +7,21 @@ from models.bare import Bare
 
 
 class BiLSTMClassifier(Bare):
-
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(hparams, *args, **kwargs)
 
-        self.embedding = nn.Embedding(self.hparams.vocab_size, self.hparams.embed_dim,
-                                      padding_idx=self.hparams.padding_idx)
+        self.embedding = nn.Embedding(
+            self.hparams.vocab_size,
+            self.hparams.embed_dim,
+            padding_idx=self.hparams.padding_idx,
+        )
         self.dropout = nn.Dropout(self.hparams.dropout_rate)
-        self.rnn = nn.LSTM(self.hparams.embed_dim, self.hparams.hidden_dim,
-                           num_layers=self.hparams.num_layers, bidirectional=True)
+        self.rnn = nn.LSTM(
+            self.hparams.embed_dim,
+            self.hparams.hidden_dim,
+            num_layers=self.hparams.num_layers,
+            bidirectional=True,
+        )
         self.fc = nn.Linear(2 * self.hparams.hidden_dim, 1)
 
     def forward(self, example) -> torch.Tensor:
@@ -25,13 +31,12 @@ class BiLSTMClassifier(Bare):
         # embedded: [max_len * b * e]
         dropped_embedded = self.dropout(embedded)
         # dropped_embeds: [max_len * b * e]
-        packed_sequence = pack_padded_sequence(dropped_embedded,
-                                               text_lens,
-                                               enforce_sorted=False)
+        packed_sequence = pack_padded_sequence(
+            dropped_embedded, text_lens, enforce_sorted=False
+        )
         packed_output, (hidden, cell) = self.rnn(packed_sequence)
         # hidden, cell: [(num_layers*2) * b * h]
-        rnn_output, rnn_output_lens = pad_packed_sequence(
-            packed_output)
+        rnn_output, rnn_output_lens = pad_packed_sequence(packed_output)
         # rnn_output: [max_len * b * (2*h)]
         hidden = hidden.view(self.hparams.num_layers, 2, -1, self.hparams.hidden_dim)
         # hidden: [num_layers * 2 * b * h]
