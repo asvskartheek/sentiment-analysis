@@ -1,12 +1,9 @@
 import argparse
-import random
 from pathlib import Path
-
-import torch
-from torchtext import data, datasets
 
 import pytorch_lightning as pl
 
+from imdb import IMDBDataModule
 from models import *
 
 from utils import generate_bigrams, count_parameters, save_vocab
@@ -72,8 +69,8 @@ parser.add_argument(
     "--model",
     type=str,
     default="fast",
-    help="model architecture to be used for training, "
-    "simple|fast|birnn|cnn, default: fast",
+    help="model architecture to be used for training, default: fast",
+    choices=["simple", "fast", "birnn", "cnn"],
 )
 parser.add_argument(
     "--conv_out_channels",
@@ -100,7 +97,7 @@ parser.add_argument(
     "--seed",
     type=int,
     default=69,
-    help="seed value for reproducable results, default: 69",
+    help="seed value for reproducible results, default: 69",
 )
 
 # Add further hyper-parameters here.
@@ -108,41 +105,17 @@ parser.add_argument(
 hparams = parser.parse_args()
 
 if __name__ == "__main__":
-    torch.manual_seed(hparams.seed)
-    # torch.backends.cudnn.deterministic = True
-    TEXT = data.Field(tokenize="spacy", include_lengths=True)
-    LABEL = data.LabelField(dtype=torch.float, is_target=True, unk_token=None)
+    pl.seed_everything(hparams.seed)
 
+    IMDB_dm = IMDBDataModule()
     if hparams.model == "fast":
-        TEXT = data.Field(
-            tokenize="spacy", include_lengths=True, preprocessing=generate_bigrams
-        )
+        IMDB_dm = IMDBDataModule(preprcessing=generate_bigrams)
 
-    print("Splitting dataset into train, valid and test..")
+    IMDB_dm.prepare_data()
+    IMDB_dm.setup("fit")
 
-    train, test = datasets.IMDB.splits(TEXT, LABEL)
-    valid, train = train.split(
-        split_ratio=hparams.valid, random_state=random.seed(hparams.seed)
-    )
-    print(f"Number of training examples: {len(train)}")
-    print(f"Number of validation examples: {len(valid)}")
-    print(f"Number of testing examples: {len(test)}")
-
-    print("Building Vocabulary...")
-    TEXT.build_vocab(
-        train,
-        max_size=hparams.vocab_size,
-        vectors=hparams.pretrained,
-        unk_init=torch.Tensor.normal_,
-    )
-    LABEL.build_vocab(train)
-
-    hparams.vocab_size = len(TEXT.vocab)
-    hparams.padding_idx = TEXT.vocab.stoi[TEXT.pad_token]
-
-    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-        (train, valid, test), batch_size=hparams.batch_size
-    )
+    hparams.vocab_size = len(IMDB_dm.TEXT.vocab)
+    hparams.padding_idx = IMDB_dm.TEXT.vocab.stoi[IMDB_dm.TEXT.pad_token]
 
     print("Creating Model...")
     if hparams.model == "simple":
@@ -175,10 +148,11 @@ if __name__ == "__main__":
             gpus=hparams.n_gpus,
             precison=16,
             gradient_clip_val=1,
+            deterministic=True,
         )
 
     print("Training...")
-    trainer.fit(model, train_dataloader=train_iterator, val_dataloaders=valid_iterator)
+    trainer.fit(model, IMDB_dm)
 
     if hparams.debug or hparams.overfit_test > 0:
         print("Debug session complete")
@@ -187,8 +161,8 @@ if __name__ == "__main__":
         folder = "./pretrained/" + hparams.model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        save_vocab(TEXT.vocab, folder + "/text.pkl")
-        save_vocab(LABEL.vocab, folder + "/label.pkl")
+        save_vocab(IMDB_dm.TEXT.vocab, folder + "/text.pkl")
+        save_vocab(IMDB_dm.LABEL.vocab, folder + "/label.pkl")
 
         print("Testing...")
-        trainer.test(test_dataloaders=test_iterator)
+        trainer.test(IMDB_dm)

@@ -36,46 +36,52 @@ class Bare(pl.LightningModule):
         loss = bce_loss_with_logits(logits, labels)
         acc = binary_accuracy(logits, labels)
 
-        logs = {"train_loss": loss, "train_acc": acc}
-        return {"loss": loss, "acc": acc, "log": logs, "progress_bar": logs}
+        result = pl.TrainResult(loss, checkpoint_on=loss)
+        result.log('train_loss', loss, prog_bar=True)
+        result.log('train_acc', acc, prog_bar=True)
+        return result
 
     def validation_step(self, batch, batch_idx):
-        results = self.training_step(batch, batch_idx)
-        loss = results["loss"]
-        acc = results["acc"]
-        logs = {"valid_loss": loss, "valid_acc": acc}
-        return {"loss": loss, "acc": acc, "progress_bar": logs}
+        examples = batch.text
+        labels = batch.label
+        logits = self.forward(examples).squeeze(1)
+        loss = bce_loss_with_logits(logits, labels)
+        acc = binary_accuracy(logits, labels)
+
+        result = pl.EvalResult()
+        result.batch_val_loss = loss
+        result.batch_val_acc = acc
+        return result
 
     def test_step(self, batch, batch_idx):
-        results = self.training_step(batch, batch_idx)
-        loss = results["loss"]
-        acc = results["acc"]
-        logs = {"test_loss": loss, "test_acc": acc}
-        return {"loss": loss, "acc": acc, "progress_bar": logs}
+        examples = batch.text
+        labels = batch.label
+        logits = self.forward(examples).squeeze(1)
+        loss = bce_loss_with_logits(logits, labels)
+        acc = binary_accuracy(logits, labels)
 
-    def validation_epoch_end(self, outputs):
-        # outputs is an array with what you returned in validation_step for each batch
-        # outputs = [{'loss': batch_0_loss}, {'loss': batch_1_loss}, ..., {'loss': batch_n_loss}]
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_acc = torch.stack([x["acc"] for x in outputs]).mean()
-        tensorboard_logs = {"val_loss": avg_loss, "val_acc": avg_acc}
-        return {
-            "avg_val_loss": avg_loss,
-            "avg_val_acc": avg_acc,
-            "log": tensorboard_logs,
-        }
+        result = pl.EvalResult()
+        result.batch_test_loss = loss
+        result.batch_test_acc = acc
+        return result
 
-    def test_epoch_end(self, outputs):
-        # outputs is an array with what you returned in validation_step for each batch
-        # outputs = [{'loss': batch_0_loss}, {'loss': batch_1_loss}, ..., {'loss': batch_n_loss}]
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_acc = torch.stack([x["acc"] for x in outputs]).mean()
-        tensorboard_logs = {"test_loss": avg_loss, "test_acc": avg_acc}
-        return {
-            "avg_test_loss": avg_loss,
-            "avg_test_acc": avg_acc,
-            "log": tensorboard_logs,
-        }
+    def validation_epoch_end(self, validation_step_output_result):
+        loss = validation_step_output_result.batch_val_loss.mean()
+        acc = validation_step_output_result.batch_val_acc.mean()
+
+        result = pl.EvalResult(checkpoint_on=loss)
+        result.log('val_loss', loss, prog_bar=True)
+        result.log('val_acc', acc, prog_bar=True)
+        return result
+
+    def test_epoch_end(self, validation_step_output_result):
+        avg_loss = validation_step_output_result.batch_test_loss.mean()
+        avg_acc = validation_step_output_result.batch_test_acc.mean()
+
+        result = pl.EvalResult()
+        result.log('test_loss', avg_loss, prog_bar=True)
+        result.log('test_acc', avg_acc, prog_bar=True)
+        return result
 
     def transfer_batch_to_device(self, batch, device):
         text = batch.text[0].to(device)
