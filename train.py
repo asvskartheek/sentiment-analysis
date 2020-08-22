@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytorch_lightning as pl
 
-from imdb import IMDBDataModule
+from datasets import *
 from models import *
 
 from utils import generate_bigrams, count_parameters, save_vocab
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     IMDB_dm = IMDBDataModule()
     if hparams.model == "fast":
-        IMDB_dm = IMDBDataModule(preprcessing=generate_bigrams)
+        IMDB_dm = IMDBDataModule(preprocessing=generate_bigrams)
 
     IMDB_dm.prepare_data()
     IMDB_dm.setup("fit")
@@ -157,12 +157,6 @@ if __name__ == "__main__":
     if hparams.debug or hparams.overfit_test > 0:
         print("Debug session complete")
     else:
-        print("Saving Vocab...")
-        folder = "./pretrained/" + hparams.model
-        Path(folder).mkdir(parents=True, exist_ok=True)
-
-        save_vocab(IMDB_dm.TEXT.vocab, folder + "/text.pkl")
-        save_vocab(IMDB_dm.LABEL.vocab, folder + "/label.pkl")
-
+        print('Training Finished.')
         print("Testing...")
-        trainer.test(IMDB_dm)
+        trainer.test()

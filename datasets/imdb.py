@@ -1,16 +1,16 @@
 from pathlib import Path
 
-import pytorch_lightning as pl
+from pytorch_lightning import LightningDataModule
 import torch
 
 from torchtext.datasets import IMDB
-from torchtext import data
+from torchtext.data import Field, LabelField, BucketIterator
 
 
-class IMDBDataModule(pl.LightningDataModule):
+class IMDBDataModule(LightningDataModule):
     def __init__(
         self,
-        data_dir: str = "./.data/",
+        data_dir: str = "../.data/",
         batch_size: int = 64,
         num_workers: int = 4,
         vocab_size: int = 25_000,
@@ -28,11 +28,11 @@ class IMDBDataModule(pl.LightningDataModule):
 
     def prepare_data(self):
         # Create Fields
-        TEXT = data.Field(tokenize="spacy", include_lengths=True)
-        LABEL = data.LabelField(dtype=torch.float, is_target=True, unk_token=None)
+        TEXT = Field(tokenize="spacy", include_lengths=True)
+        LABEL = LabelField(dtype=torch.float, is_target=True, unk_token=None)
 
         if self.preprocessing is not None:
-            TEXT = data.Field(
+            TEXT = Field(
                 tokenize="spacy", include_lengths=True, preprocessing=self.preprocessing
             )
         if not (Path("LABEL.pt").exists() and Path("TEXT.pt").exists()):
@@ -57,8 +57,8 @@ class IMDBDataModule(pl.LightningDataModule):
             torch.save(LABEL.vocab, Path(self.data_dir) / "LABEL.pt")
 
     def setup(self, stage=None):
-        self.TEXT = data.Field(tokenize="spacy", include_lengths=True)
-        self.LABEL = data.LabelField(dtype=torch.float, is_target=True, unk_token=None)
+        self.TEXT = Field(tokenize="spacy", include_lengths=True)
+        self.LABEL = LabelField(dtype=torch.float, is_target=True, unk_token=None)
         self.TEXT.vocab = torch.load(Path(self.data_dir) / "TEXT.pt")
         self.LABEL.vocab = torch.load(Path(self.data_dir) / "LABEL.pt")
 
@@ -67,16 +67,16 @@ class IMDBDataModule(pl.LightningDataModule):
         self.IMDB_train, self.IMDB_val = self.IMDB_train.split(split_ratio=[0.8, 0.2])
 
     def train_dataloader(self):
-        return data.BucketIterator(
+        return BucketIterator(
             self.IMDB_train, batch_size=self.batch_size, shuffle=True
         )
 
     def val_dataloader(self):
-        return data.BucketIterator(
+        return BucketIterator(
             self.IMDB_test, batch_size=self.batch_size, shuffle=False
         )
 
     def test_dataloader(self):
-        return data.BucketIterator(
+        return BucketIterator(
             self.IMDB_test, batch_size=self.batch_size, shuffle=False
         )
