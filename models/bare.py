@@ -48,7 +48,7 @@ class Bare(pl.LightningModule):
         loss = bce_loss_with_logits(logits, labels)
         acc = binary_accuracy(logits, labels)
 
-        result = pl.EvalResult()
+        result = pl.EvalResult(checkpoint_on=loss)
         result.batch_val_loss = loss
         result.batch_val_acc = acc
         return result
